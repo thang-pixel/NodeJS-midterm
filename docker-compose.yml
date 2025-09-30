@@ -1,0 +1,32 @@
+services:
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    environment:
+      - AUTH_SERVICE_URL=http://user-auth:3000
+    depends_on:
+      - user-auth
+      
+  user-auth:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/auth-db
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

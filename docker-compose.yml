@@ -4,13 +4,11 @@ services:
       context: ./api-gateway
       dockerfile: Dockerfile
     ports:
-      - "80:80"
-    environment:
-      - AUTH_SERVICE_URL=http://user-auth:3000
+      - "2000:2000"
     depends_on:
-      - user-auth
-      
-  user-auth:
+      - auth-service
+
+  auth-service:
     build:
       context: ./auth-service
       dockerfile: Dockerfile

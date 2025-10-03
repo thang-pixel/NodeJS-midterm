@@ -5,8 +5,13 @@ const cors = require('cors');
 
 const app = express();
 
+app.use((req, res, next) => {
+  console.log('Received:', req.method, req.originalUrl);
+  next();
+});
+
 app.use(cors({
-  origin: 'http://localhost:3000', // React frontend (sửa port)
+  origin: 'http://localhost:3001', // React frontend (sửa port)
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -23,17 +28,17 @@ app.use('/api/auth', createProxyMiddleware({
 
 // Proxy cho user-service
 app.use('/api/users', createProxyMiddleware({
-  target: process.env.USER_SERVICE_URL || 'http://user-service:3001',
+  target: process.env.USER_SERVICE_URL || 'http://user-service:3002',
   changeOrigin: true,
+  logLevel: 'debug',
   pathRewrite: {
     '^/api/users': '',   
   },
-  logLevel: 'debug'
 }));
 
 // Proxy cho payment-service
 app.use('/api/payments', createProxyMiddleware({
-  target: process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3002',
+  target: process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3003',
   changeOrigin: true,
   pathRewrite: {
     '^/api/payments': '',   

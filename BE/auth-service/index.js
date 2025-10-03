@@ -19,6 +19,7 @@ mongoose.connect(process.env.MONGO_URI, {
     .catch(err => console.log(err));
 
 const userSchema = new mongoose.Schema({
+    studentId: { type: String, required: true, unique: true },
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     email: { type: String, required: true },

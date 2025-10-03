@@ -1,21 +1,49 @@
 services:
   api-gateway:
     build:
-      context: ./api-gateway
+      context: ./BE/api-gateway
       dockerfile: Dockerfile
     ports:
       - "2000:2000"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:3000
+      - USER_SERVICE_URL=http://user-service:3001
+      - PAYMENT_SERVICE_URL=http://payment-service:3002
     depends_on:
       - auth-service
+      - user-service
+      - payment-service
 
   auth-service:
     build:
-      context: ./auth-service
+      context: ./BE/auth-service
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
       - MONGO_URI=mongodb://mongo:27017/auth-db
+    depends_on:
+      - mongo
+
+  user-service:
+    build:
+      context: ./BE/user-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/user-db
+    depends_on:
+      - mongo
+
+  payment-service:
+    build:
+      context: ./BE/payment-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/payment-db
     depends_on:
       - mongo
 

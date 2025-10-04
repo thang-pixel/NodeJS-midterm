@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 
 // API lấy thông tin người dùng theo studentId
-app.get('/:studentId', async (req, res) => {
+app.get('/users/:studentId', async (req, res) => {
     console.log('User-service received:', req.method, req.originalUrl);
     try {
         const user = await User.findOne({ studentId: req.params.studentId });

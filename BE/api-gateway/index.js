@@ -13,7 +13,7 @@ app.use(cors({
 
 // Proxy cho auth-service
 app.use('/api/auth', createProxyMiddleware({
-  target: process.env.AUTH_SERVICE_URL || 'http://auth-service:3000',
+  target: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
   changeOrigin: true,
   pathRewrite: {
     '^/api/auth': '',   // xoá "/api/auth", còn lại "/login"
@@ -23,7 +23,7 @@ app.use('/api/auth', createProxyMiddleware({
 
 // Proxy cho student-service
 app.use('/api/students', createProxyMiddleware({
-  target: process.env.USER_SERVICE_URL || 'http://user-service:3001',
+  target: process.env.USER_SERVICE_URL || 'http://user-service:3002',
   changeOrigin: true,
   logLevel: 'debug',
   pathRewrite: {

@@ -6,9 +6,9 @@ services:
     ports:
       - "2000:2000"
     environment:
-      - AUTH_SERVICE_URL=http://auth-service:3000
-      - USER_SERVICE_URL=http://user-service:3001
-      - PAYMENT_SERVICE_URL=http://payment-service:3002
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - USER_SERVICE_URL=http://user-service:3002
+      - PAYMENT_SERVICE_URL=http://payment-service:3003
     depends_on:
       - auth-service
       - user-service
@@ -19,7 +19,7 @@ services:
       context: ./BE/auth-service
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
       - MONGO_URI=mongodb://mongo:27017/auth-db
     depends_on:
@@ -30,7 +30,7 @@ services:
       context: ./BE/user-service
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "3002:3002"
     environment:
       - MONGO_URI=mongodb://mongo:27017/user-db
     depends_on:
@@ -41,7 +41,7 @@ services:
       context: ./BE/payment-service
       dockerfile: Dockerfile
     ports:
-      - "3002:3002"
+      - "3003:3003"
     environment:
       - MONGO_URI=mongodb://mongo:27017/payment-db
     depends_on:

@@ -27,11 +27,7 @@ app.get('/users/:studentId', async (req, res) => {
     try {
         const user = await User.findOne({ studentId: req.params.studentId });
         if (!user) return res.status(404).send('User not found');
-        const formattedUser = {
-            ...user.toObject(),
-            balance: user.balance.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
-        };
-        res.send(formattedUser);
+        res.send(user);
     } catch (error) {
         res.status(500).send('Server error');
     }

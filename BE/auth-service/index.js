@@ -7,7 +7,7 @@ const cors = require('cors');
 const app = express();
 app.use(express.json());
 app.use(cors({
-  origin: 'http://localhost:3001',
+  origin: 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -29,19 +29,30 @@ const User = mongoose.model('User', userSchema);
 
 // API đăng nhập
 app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username, password }); 
+    const user = await User.findOne({ username, password });
     if (!user) {
-      return res.status(401).json({ message: 'User không tồn tại' });
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
-    const token = jwt.sign({ username: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.json({ message: 'Login successful', token });
+
+    const token = jwt.sign(
+      { studentId: user.studentId },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.json({
+      message: 'Login successful',
+      token,
+      studentId: user.studentId,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Login error:', error.message);
+    res.status(500).json({ message: 'Server error' });
   }
 });
-
 // Chạy server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`User Auth Service running on port ${PORT}`));

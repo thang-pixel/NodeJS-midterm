@@ -6,7 +6,7 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors({
-  origin: 'http://localhost:3001', // React frontend (sửa port)
+  origin: 'http://localhost:3000', // React frontend (sửa port)
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -27,7 +27,7 @@ app.use('/api/students', createProxyMiddleware({
   changeOrigin: true,
   logLevel: 'debug',
   pathRewrite: {
-    '^/api/users': 'users',   // giữ nguyên "/users"
+    '^/api/students': '',   
   },
 }));
 
@@ -47,4 +47,4 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 2000;
-app.listen(PORT, () => console.log(`🚀 API Gateway running on port ${PORT}`));
+app.listen(PORT, () => console.log(` API Gateway running on port ${PORT}`));

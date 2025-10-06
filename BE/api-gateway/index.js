@@ -41,6 +41,16 @@ app.use('/api/payments', createProxyMiddleware({
   logLevel: 'debug'
 }));
 
+// Proxy cho notification-service
+app.use('/api/notifications', createProxyMiddleware({
+  target: process.env.NOTIFICATION_SERVICE_URL || 'http://notification-service:3004',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/notifications': '',
+  },
+  logLevel: 'debug'
+}));
+
 // Route mặc định
 app.get('/', (req, res) => {
   res.json({ message: 'API Gateway is running' });

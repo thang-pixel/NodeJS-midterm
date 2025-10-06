@@ -36,7 +36,7 @@ app.use('/api/payments', createProxyMiddleware({
   target: process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3003',
   changeOrigin: true,
   pathRewrite: {
-    '^/api/payments': '',   
+    '^/api/payments': '/payments',   
   },
   logLevel: 'debug'
 }));
@@ -47,6 +47,16 @@ app.use('/api/notifications', createProxyMiddleware({
   changeOrigin: true,
   pathRewrite: {
     '^/api/notifications': '',
+  },
+  logLevel: 'debug'
+}));
+
+// Proxy cho tuition-service
+app.use('/api/tuitions', createProxyMiddleware({
+  target: process.env.TUITION_SERVICE_URL || 'http://tuition-service:3005',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/tuitions': '',
   },
   logLevel: 'debug'
 }));

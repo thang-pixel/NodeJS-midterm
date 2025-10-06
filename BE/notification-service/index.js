@@ -3,6 +3,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
+const amqp = require('amqplib');
+
 
 const app = express();
 app.use(express.json());
@@ -44,42 +46,48 @@ const generateOTP = () => {
 };
 
 // Tạo và gửi OTP
-app.post('/otp', async (req, res) => {
-  try {
-    const { transactionId, email } = req.body;
-    if (!transactionId || !email) {
-      return res.status(400).json({ message: 'Missing transactionId or email' });
+async function startOtpConsumer() {
+  const queue = 'otp_queue';
+  const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost');
+  const channel = await conn.createChannel();
+  await channel.assertQueue(queue, { durable: true });
+
+  channel.consume(queue, async (msg) => {
+    if (msg !== null) {
+      try {
+        const { transactionId, email } = JSON.parse(msg.content.toString());
+
+        // Sinh OTP không trùng
+        let otp;
+        do {
+          otp = generateOTP();
+        } while (await OTP.findOne({ otp }));
+
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
+
+        const otpRecord = new OTP({ transactionId, email, otp, expiresAt });
+        await otpRecord.save();
+
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: email,
+          subject: 'Your OTP Code',
+          text: `Your OTP code is ${otp}. It is valid for 5 minutes.`
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`OTP sent to ${email} for transaction ${transactionId}`);
+
+        channel.ack(msg);
+      } catch (error) {
+        console.error('Error processing OTP message:', error.message);
+        // Không ack để có thể retry nếu cần
+      }
     }
+  });
+}
 
-    let otp;
-    do {
-      otp = generateOTP();
-    } while (await OTP.findOne({ otp }));
-
-    const expiresAt = new Date(Date.now() + 1 * 60 * 1000);
-
-    const otpRecord = new OTP({ transactionId, email, otp, expiresAt });
-    await otpRecord.save();
-
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Your OTP Code',
-      text: `Your OTP code is ${otp}. It is valid for 5 minutes.`
-    };
-
-    await transporter.sendMail(mailOptions);
-
-    res.status(201).json({
-      message: 'OTP sent successfully',
-      transactionId
-    });
-
-  } catch (error) {
-    console.error('Error sending OTP:', error.message);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+startOtpConsumer();
 
 // Xác thực OTP
 app.post('/otp/verify', async (req, res) => {

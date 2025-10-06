@@ -10,10 +10,13 @@ services:
       - USER_SERVICE_URL=http://user-service:3002
       - PAYMENT_SERVICE_URL=http://payment-service:3003
       - NOTIFICATION_SERVICE_URL=http://notification-service:3004
+      - TUITION_SERVICE_URL=http://tuition-service:3005
     depends_on:
       - auth-service
       - user-service
       - payment-service
+      - notification-service
+      - tuition-service
 
   auth-service:
     build:
@@ -45,8 +48,21 @@ services:
       - "3003:3003"
     environment:
       - MONGO_URI=mongodb://mongo:27017/payment-db
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
     depends_on:
       - mongo
+      - rabbitmq
+
+  rabbitmq:
+    image: "rabbitmq:3-management"
+    ports:
+      - "5672:5672"     # AMQP port
+      - "15672:15672"   # Management UI port
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin123
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
 
   notification-service:
     build:
@@ -59,15 +75,39 @@ services:
       - EMAIL_USER=minhtuank27tdtu@gmail.com
       - EMAIL_PASS=scxwnfestbszztcf
       - OTP_EXPIRE_MINUTES=1
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+    depends_on:
+      - mongo
+      - rabbitmq
+
+      
+  tuition-service:
+    build:
+      context: ./BE/Tuition-service
+      dockerfile: Dockerfile
+    ports:
+      - "3005:3005"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/tuition-db
     depends_on:
       - mongo
       
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
   mongo:
     image: mongo:latest
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongo-data:/data/db
 
 volumes:
   mongo-data:
+  rabbitmq-data:
+

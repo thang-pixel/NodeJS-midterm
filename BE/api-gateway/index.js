@@ -6,14 +6,14 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors({
-  origin: 'http://localhost:3001', // React frontend (sửa port)
+  origin: 'http://localhost:3000', // React frontend (sửa port)
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // Proxy cho auth-service
 app.use('/api/auth', createProxyMiddleware({
-  target: process.env.AUTH_SERVICE_URL || 'http://auth-service:3000',
+  target: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
   changeOrigin: true,
   pathRewrite: {
     '^/api/auth': '',   // xoá "/api/auth", còn lại "/login"
@@ -23,11 +23,11 @@ app.use('/api/auth', createProxyMiddleware({
 
 // Proxy cho student-service
 app.use('/api/students', createProxyMiddleware({
-  target: process.env.USER_SERVICE_URL || 'http://user-service:3001',
+  target: process.env.USER_SERVICE_URL || 'http://user-service:3002',
   changeOrigin: true,
   logLevel: 'debug',
   pathRewrite: {
-    '^/api/users': 'users',   // giữ nguyên "/users"
+    '^/api/students': '',   
   },
 }));
 
@@ -41,10 +41,20 @@ app.use('/api/payments', createProxyMiddleware({
   logLevel: 'debug'
 }));
 
+// Proxy cho notification-service
+app.use('/api/notifications', createProxyMiddleware({
+  target: process.env.NOTIFICATION_SERVICE_URL || 'http://notification-service:3004',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/notifications': '',
+  },
+  logLevel: 'debug'
+}));
+
 // Route mặc định
 app.get('/', (req, res) => {
   res.json({ message: 'API Gateway is running' });
 });
 
 const PORT = process.env.PORT || 2000;
-app.listen(PORT, () => console.log(`🚀 API Gateway running on port ${PORT}`));
+app.listen(PORT, () => console.log(` API Gateway running on port ${PORT}`));

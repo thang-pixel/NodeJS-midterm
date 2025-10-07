@@ -69,29 +69,32 @@ function Home() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Typography variant="h4" align="center" sx={{ mb: 4 }}>
-        Đóng học phí
-      </Typography>
+    <>
+      <Navbar />
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Typography variant="h4" align="center" sx={{ mb: 4 }}>
+          Đóng học phí
+        </Typography>
 
-      <Grid container spacing={2}>
-        {/* Cột trái: thông tin người đăng nhập */}
-        <Grid item xs={4}>
-          <ProfilePanel loggedInStudent={loggedInStudent} />
-        </Grid>
+        <Grid container spacing={2}>
+          {/* Cột trái: thông tin người đăng nhập */}
+          <Grid item xs={4}>
+            <ProfilePanel loggedInStudent={loggedInStudent} />
+          </Grid>
 
-        {/* Cột phải: tra cứu & thanh toán */}
-        <Grid item xs={8}>
-          <SearchPanel onSearch={handleSearchStudent} />
-          <PaymentPanel 
-            searchedStudent={searchedStudent} 
-            loggedInStudent={loggedInStudent}
-            onUpdateLoggedInStudent={setLoggedInStudent}
-            onUpdateSearchedStudent={setSearchedStudent}
-          />
+          {/* Cột phải: tra cứu & thanh toán */}
+          <Grid item xs={8}>
+            <SearchPanel onSearch={handleSearchStudent} />
+            <PaymentPanel 
+              searchedStudent={searchedStudent} 
+              loggedInStudent={loggedInStudent}
+              onUpdateLoggedInStudent={setLoggedInStudent}
+              onUpdateSearchedStudent={setSearchedStudent}
+            />
+          </Grid>
         </Grid>
-      </Grid>
-    </Container>
+      </Container>
+    </>
   );
 }
 

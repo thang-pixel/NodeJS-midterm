@@ -57,7 +57,7 @@ function Navbar() {
           
           <Button
             color="inherit"
-            onClick={() => navigate('/history')}
+            onClick={() => navigate('/transaction-history')}
             sx={{
               px: 3,
               py: 1,

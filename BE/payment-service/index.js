@@ -140,9 +140,10 @@ app.get('/payments/:paymentId', async (req, res) => {
 
 
 // API lấy tất cả giao dịch
-app.get('/payments', async (req, res) => {
+app.get('/payments/payer/:payerId', async (req, res) => {
     try {
-        const payments = await Payment.find();
+        const { payerId } = req.params;
+        const payments = await Payment.find({ payerId });
         res.send(payments);
     } catch (error) {
         res.status(500).send('Server error');

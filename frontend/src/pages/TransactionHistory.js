@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
+import Navbar from '../components/Navbar';
 
 function TransactionHistory() {
   const [transactions, setTransactions] = useState([]);
@@ -49,7 +50,7 @@ function TransactionHistory() {
       setLoggedInUser(userRes.data);
 
       // Lấy lịch sử giao dịch của user này (payerId)
-      const res = await axios.get(`http://localhost:2000/api/transaction/payments/${decoded.studentId}`);
+      const res = await axios.get(`http://localhost:2000/api/transaction/payments/payer/${decoded.studentId}`);
       const allPayments = res.data;
       
       // Sắp xếp theo thời gian mới nhất
@@ -109,8 +110,13 @@ function TransactionHistory() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
-      {/* Header */}
+    <>
+      <Navbar />
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        {/* Header */}
+        <Typography variant="h4" align="center" sx={{ mb: 4 }}>
+          Lịch sử giao dịch
+        </Typography>
       <Paper 
         elevation={3} 
         sx={{ 
@@ -224,6 +230,7 @@ function TransactionHistory() {
         </Paper>
       )}
     </Container>
+    </>
   );
 }
 

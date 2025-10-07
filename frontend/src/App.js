@@ -5,12 +5,14 @@ import Login from './pages/Login.js';
 import Home from './pages/Home.js';
 import TransactionHistory from './pages/TransactionHistory.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
+
 function App() {
   return (
     <Router>
       <Container>
         <Routes>
           <Route path="/" element={<Login />} />
+          <Route path="/login" element={<Login />} />
           <Route
             path="/home"
             element={

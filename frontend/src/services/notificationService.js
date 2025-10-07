@@ -3,7 +3,7 @@ import axios from "axios";
 const API_BASE = "http://localhost:2000";
 
 export async function createPayment({ payerId, studentId, email }) {
-  return fetch('http://localhost:3003/payments', {
+  return fetch('http://localhost:2000/api/payments/payments', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ payerId, studentId, email })

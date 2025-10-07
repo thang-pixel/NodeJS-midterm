@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { Container } from '@mui/material';
 import Login from './pages/Login.js';
 import Home from './pages/Home.js';
+import TransactionHistory from './pages/TransactionHistory.js';
 import ProtectedRoute from './components/ProtectedRoute.js';
 
 function App() {
@@ -16,6 +17,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/transaction-history"
+            element={
+              <ProtectedRoute>
+                <TransactionHistory />
               </ProtectedRoute>
             }
           />

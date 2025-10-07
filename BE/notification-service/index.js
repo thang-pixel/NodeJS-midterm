@@ -89,6 +89,48 @@ async function startOtpConsumer() {
 
 startOtpConsumer();
 
+
+
+// API gửi lại OTP cho payment đã tồn tại
+app.post('/otp/resend', async (req, res) => {
+  try {
+    const { transactionId, email } = req.body;
+    if (!transactionId || !email) {
+      return res.status(400).json({ message: 'Missing transactionId or email' });
+    }
+
+    // Xóa OTP cũ (nếu có)
+    await OTP.deleteMany({ transactionId });
+
+    // Sinh OTP mới
+    let otp;
+    do {
+      otp = generateOTP();
+    } while (await OTP.findOne({ otp }));
+
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
+
+    const otpRecord = new OTP({ transactionId, email, otp, expiresAt });
+    await otpRecord.save();
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Your New OTP Code',
+      text: `Your new OTP code is ${otp}. It is valid for 5 minutes.`
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`New OTP sent to ${email} for transaction ${transactionId}`);
+
+    res.json({ message: 'New OTP sent successfully' });
+  } catch (error) {
+    console.error('Error resending OTP:', error.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
 // Xác thực OTP
 app.post('/otp/verify', async (req, res) => {
   try {

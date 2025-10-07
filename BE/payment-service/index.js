@@ -27,8 +27,32 @@ const Payment = mongoose.model('Payment', paymentSchema);
 app.post('/payments', async (req, res) => {
     try {
         const { payerId, studentId, email } = req.body;
+        
+        //Kiểm tra xem đã có payment pending cho studentId này chưa
+        const existingPayment = await Payment.findOne({ 
+            studentId, 
+            status: 'pending' 
+        });
+
+        if (existingPayment) {
+            // Nếu đã có payment pending, gửi lại OTP cho payment cũ
+            await sendOtpToQueue({ 
+                transactionId: existingPayment.paymentId, 
+                email 
+            });
+            
+            return res.status(200).json({ 
+                message: 'Payment already exists, OTP resent', 
+                paymentId: existingPayment.paymentId 
+            });
+        }
+
+
         // 1. Lấy thông tin học phí từ Tuition-service
-        const tuitionRes = await axios.get(`http://localhost:3005/tuitions/${studentId}`);
+        const tuitionRes = await axios.get(`http://tuition-service:3005/tuitions/${studentId}`);
+        if (!tuitionRes.data || tuitionRes.status !== 200) {
+    return res.status(404).json({ message: 'Tuition record not found' });
+}
         const tuition = tuitionRes.data;
 
         // 2. Kiểm tra trạng thái học phí
@@ -76,22 +100,22 @@ app.put('/payments/:paymentId/status', async (req, res) => {
 
         if (status === 'completed') {
             // 1. Lấy thông tin user hiện tại
-            const userRes = await axios.get(`http://localhost:3002/users/${payment.payerId}`);
+            const userRes = await axios.get(`http://user-service:3002/users/${payment.payerId}`);
             const user = userRes.data;
 
             // 2. Kiểm tra số dư
             if (user.balance < payment.amount) {
-                return res.status(400).send('Insufficient balance');
+                return res.status(400).send('Số dư không đủ để thanh toán');
             }
 
             // 3. Trừ tiền và cập nhật số dư
             const newBalance = user.balance - payment.amount;
-            await axios.put(`http://localhost:3001/users/${payment.payerId}/balance`, {
+            await axios.put(`http://user-service:3002/users/${payment.payerId}/balance`, {
                 balance: newBalance
             });
 
             // 4. Gọi Tuition-service để cập nhật trạng thái học phí
-            await axios.put(`http://localhost:3003/tuitions/${payment.studentId}/status`, {
+            await axios.put(`http://tuition-service:3005/tuitions/${payment.studentId}/status`, {
                 status: 'paid'
             });
         }
@@ -101,6 +125,7 @@ app.put('/payments/:paymentId/status', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
+
 
 // API lấy thông tin giao dịch theo paymentId
 app.get('/payments/:paymentId', async (req, res) => {

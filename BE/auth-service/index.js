@@ -18,21 +18,22 @@ mongoose.connect(process.env.MONGO_URI, {
 }).then(() => console.log('MongoDB connected'))
     .catch(err => console.log(err));
 
-const userSchema = new mongoose.Schema({
+const authSchema = new mongoose.Schema({
     studentId: { type: String, required: true, unique: true },
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     email: { type: String, required: true },
 });
 
-const User = mongoose.model('User', userSchema);
+const auth = mongoose.model('Auth', authSchema);
 
 // API đăng nhập
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const user = await User.findOne({ username, password });
+    const user = await auth.findOne({ username, password });
+    console.log("User found:", user); // Xem user có studentId không
     if (!user) {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
@@ -42,7 +43,8 @@ app.post('/login', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
-
+    console.log("Token created:", token);
+    console.log("Decoded token:", jwt.decode(token));
     res.json({
       message: 'Login successful',
       token,

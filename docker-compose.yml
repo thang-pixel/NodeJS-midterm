@@ -96,10 +96,16 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
     ports:
       - "3000:3000"
+    environment:
+      - NODE_ENV=production
     depends_on:
       - api-gateway
+    restart: unless-stopped
+    
   mongo:
     image: mongo:latest
     ports:

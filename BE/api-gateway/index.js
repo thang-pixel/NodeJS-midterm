@@ -32,11 +32,11 @@ app.use('/api/students', createProxyMiddleware({
 }));
 
 // Proxy cho payment-service
-app.use('/api/payments', createProxyMiddleware({
+app.use('/api/transaction', createProxyMiddleware({
   target: process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3003',
   changeOrigin: true,
   pathRewrite: {
-    '^/api/payments': '/payments',   
+    '^/api/transaction': '', 
   },
   logLevel: 'debug'
 }));

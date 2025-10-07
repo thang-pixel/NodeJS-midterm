@@ -14,6 +14,7 @@ function Home() {
   // Lấy thông tin sinh viên đăng nhập từ JWT token
   useEffect(() => {
     const token = localStorage.getItem("token");
+    console.log("Token from localStorage:", token);
     if (!token) return;
 
     try {
@@ -30,19 +31,35 @@ function Home() {
 
   // Gọi API tới user-service để lấy thông tin sinh viên
   const fetchStudentInfo = async (studentId, isLoggedInUser = false) => {
-    try {
-      const res = await axios.get(
-        `http://localhost:2000/api/students/users/${studentId}`
-      );
-      console.log("Dữ liệu trả về:", res.data);
+  try {
+    const res = await axios.get(
+      `http://localhost:2000/api/students/users/${studentId}`
+    );
+    console.log("Dữ liệu trả về:", res.data);
 
-      if (isLoggedInUser) setLoggedInStudent(res.data);
-      else setSearchedStudent(res.data);
-    } catch (err) {
-      console.error("Lỗi khi lấy thông tin sinh viên:", err);
-      alert("Không tìm thấy sinh viên.");
+    // Lấy thông tin học phí
+    const tuitionRes = await axios.get(
+      `http://localhost:2000/api/tuitions/tuitions/${studentId}`
+    );
+    
+    // Gộp thông tin sinh viên và học phí
+    const studentWithTuition = {
+      ...res.data,
+      tuitionAmount: tuitionRes.data.tuitionAmount,
+      tuitionStatus: tuitionRes.data.status,
+      dueDate: tuitionRes.data.duedate
+    };
+
+    if (isLoggedInUser) {
+      setLoggedInStudent(studentWithTuition);
+    } else {
+      setSearchedStudent(studentWithTuition);
     }
-  };
+  } catch (err) {
+    console.error("Lỗi khi lấy thông tin sinh viên:", err);
+    alert("Không tìm thấy sinh viên hoặc thông tin học phí.");
+  }
+};
 
   // Khi người dùng tìm sinh viên khác bằng MSSV
   const handleSearchStudent = (mssv) => {
@@ -66,7 +83,12 @@ function Home() {
         {/* Cột phải: tra cứu & thanh toán */}
         <Grid item xs={8}>
           <SearchPanel onSearch={handleSearchStudent} />
-          <PaymentPanel searchedStudent={searchedStudent} />
+          <PaymentPanel 
+            searchedStudent={searchedStudent} 
+            loggedInStudent={loggedInStudent}
+            onUpdateLoggedInStudent={setLoggedInStudent}
+            onUpdateSearchedStudent={setSearchedStudent}
+          />
         </Grid>
       </Grid>
     </Container>

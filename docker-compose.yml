@@ -80,7 +80,15 @@ services:
       - mongo
       - rabbitmq
 
-      
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+
   tuition-service:
     build:
       context: ./BE/Tuition-service
@@ -92,19 +100,7 @@ services:
     depends_on:
       - mongo
       
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=production
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-    depends_on:
-      - api-gateway
-    restart: unless-stopped
+  
     
   mongo:
     image: mongo:latest

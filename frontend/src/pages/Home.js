@@ -6,7 +6,7 @@ import { jwtDecode } from "jwt-decode";
 import ProfilePanel from "../components/LeftPanel.js";
 import SearchPanel from "../components/SearchPanel.js";
 import PaymentPanel from "../components//PaymentPanel.js";
-
+import Navbar from "../components/Navbar.js";
 function Home() {
   const [loggedInStudent, setLoggedInStudent] = useState(null);
   const [searchedStudent, setSearchedStudent] = useState(null);

@@ -1,3 +1,4 @@
+
 const { v4: uuidv4 } = require('uuid'); 
 require('dotenv').config();
 const express = require('express');
@@ -12,30 +13,30 @@ mongoose.connect(process.env.MONGO_URI, {
     useUnifiedTopology: true
 }).then(() => console.log('MongoDB connected'))
     .catch(err => console.log(err));
+
 const paymentSchema = new mongoose.Schema({
     paymentId: { type: String, required: true, unique: true }, 
-    amount:    { type: Number, required: true }, // So tien học phi cần thanh toan
-    payerId:  { type: String, required: true }, // Id người thanh toan
-    status:   { type: String, required: true, enum: ['completed', 'pending', 'failed'], default: 'pending' },
-    studentId: { type: String, required: true }, //Id người được thanh toan
+    amount: { type: Number, required: true },
+    payerId: { type: String, required: true },
+    status: { type: String, required: true, enum: ['completed', 'pending', 'failed'], default: 'pending' },
+    studentId: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
+    isProcessing: { type: Boolean, default: false },
+    processingBy: { type: String, default: null }
 });
 const Payment = mongoose.model('Payment', paymentSchema);
-
 
 // API tạo giao dịch thanh toán mới
 app.post('/payments', async (req, res) => {
     try {
         const { payerId, studentId, email } = req.body;
         
-        //Kiểm tra xem đã có payment pending cho studentId này chưa
         const existingPayment = await Payment.findOne({ 
             studentId, 
             status: 'pending' 
         });
 
         if (existingPayment) {
-            // Nếu đã có payment pending, gửi lại OTP cho payment cũ
             await sendOtpToQueue({ 
                 transactionId: existingPayment.paymentId, 
                 email 
@@ -47,108 +48,183 @@ app.post('/payments', async (req, res) => {
             });
         }
 
-
-        // 1. Lấy thông tin học phí từ Tuition-service
         const tuitionRes = await axios.get(`http://tuition-service:3005/tuitions/${studentId}`);
         if (!tuitionRes.data || tuitionRes.status !== 200) {
-    return res.status(404).json({ message: 'Tuition record not found' });
-}
+            return res.status(404).json({ message: 'Tuition record not found' });
+        }
         const tuition = tuitionRes.data;
 
-        // 2. Kiểm tra trạng thái học phí
         if (tuition.status === 'paid') {
             return res.status(400).json({ message: 'Tuition already paid' });
         }
 
-        // 3. Dùng đúng số tiền học phí để tạo payment
         const amount = tuition.tuitionAmount;
-        const paymentId = uuidv4(); // Sử dụng uuid để sinh paymentId
+        const paymentId = uuidv4();
         const payment = new Payment({ paymentId, amount, payerId, studentId, status: 'pending' });
         await payment.save();
 
-        // 4. Gửi OTP 
         await sendOtpToQueue({ transactionId: paymentId, email });
-
-        // 5. Trả về thông tin giao dịch
 
         res.status(201).json({ message: 'Payment created, OTP sent', paymentId });
     } catch (error) {
+        console.error('Error creating payment:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Cập nhật trạng thái giao dịch - Đơn giản hóa để tránh lỗi
+app.put('/payments/:paymentId/status', async (req, res) => {
+    try {
+        const { status } = req.body;
+        const paymentId = req.params.paymentId;
+
+        console.log('Updating payment status:', paymentId, 'to', status);
+
+        // 1. Tìm payment record
+        const payment = await Payment.findOne({ paymentId });
+        if (!payment) {
+            console.error('Payment not found:', paymentId);
+            return res.status(404).json({ message: 'Payment record not found' });
+        }
+
+        // 2. Kiểm tra trạng thái hiện tại
+        if (payment.status !== 'pending') {
+            console.error('Payment not pending:', payment.status);
+            return res.status(400).json({ message: 'Payment is not in pending status' });
+        }
+
+        // 3. Kiểm tra processing lock đơn giản
+        if (payment.isProcessing) {
+            console.error('Payment is being processed');
+            return res.status(409).json({ message: 'Giao dịch đang được xử lý, vui lòng thử lại sau' });
+        }
+
+        if (status === 'completed') {
+            // 4. Đánh dấu đang xử lý
+            await Payment.updateOne(
+                { paymentId },
+                { 
+                    isProcessing: true, 
+                    processingBy: paymentId 
+                }
+            );
+
+            try {
+                // 5. Kiểm tra học phí
+                const tuitionCheck = await axios.get(`http://tuition-service:3005/tuitions/${payment.studentId}`);
+                if (tuitionCheck.data.status === 'paid') {
+                    throw new Error('Tuition has been paid by another transaction');
+                }
+
+                // 6. Lấy thông tin user
+                const userRes = await axios.get(`http://user-service:3002/users/${payment.payerId}`);
+                const user = userRes.data;
+
+                if (user.balance < payment.amount) {
+                    throw new Error('Insufficient balance');
+                }
+
+                // 7. Cập nhật số dư user
+                const newBalance = user.balance - payment.amount;
+                await axios.put(`http://user-service:3002/users/${payment.payerId}/balance`, {
+                    balance: newBalance
+                });
+
+                // 8. Cập nhật trạng thái học phí
+                await axios.put(`http://tuition-service:3005/tuitions/${payment.studentId}/status`, {
+                    status: 'paid'
+                });
+
+                // 9. Cập nhật trạng thái payment
+                await Payment.updateOne(
+                    { paymentId },
+                    { 
+                        status: 'completed',
+                        isProcessing: false,
+                        processingBy: null
+                    }
+                );
+
+                console.log('Payment completed successfully:', paymentId);
+
+            } catch (processError) {
+                // Reset processing flag nếu có lỗi
+                await Payment.updateOne(
+                    { paymentId },
+                    { 
+                        isProcessing: false,
+                        processingBy: null
+                    }
+                );
+                throw processError;
+            }
+
+        } else {
+            // Chỉ cập nhật status
+            await Payment.updateOne(
+                { paymentId },
+                { status }
+            );
+        }
+
+        const updatedPayment = await Payment.findOne({ paymentId });
+        res.json(updatedPayment);
+
+    } catch (error) {
+        console.error('Error updating payment status:', error);
+        
+        // Trả về lỗi cụ thể
+        if (error.message === 'Tuition has been paid by another transaction') {
+            return res.status(409).json({ message: 'Học phí đã được thanh toán bởi giao dịch khác' });
+        }
+        if (error.message === 'Insufficient balance') {
+            return res.status(400).json({ message: 'Số dư không đủ để thực hiện giao dịch' });
+        }
+        
+        res.status(500).json({ message: 'Server error: ' + error.message });
     }
 });
 
 // Hàm gửi tin nhắn đến RabbitMQ
 async function sendOtpToQueue(message) {
-    const queue = 'otp_queue';
-    const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost');
-    const channel = await conn.createChannel();
-    await channel.assertQueue(queue, { durable: true });
-    channel.sendToQueue(queue, Buffer.from(JSON.stringify(message)), { persistent: true });
-    setTimeout(() => { conn.close(); }, 500); // Đóng kết nối sau khi gửi
+    try {
+        const queue = 'otp_queue';
+        const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://admin:admin123@localhost:5672');
+        const channel = await conn.createChannel();
+        await channel.assertQueue(queue, { durable: true });
+        channel.sendToQueue(queue, Buffer.from(JSON.stringify(message)), { persistent: true });
+        setTimeout(() => { conn.close(); }, 500);
+        console.log('OTP message sent to queue:', message);
+    } catch (error) {
+        console.error('Error sending OTP to queue:', error);
+        throw error;
+    }
 }
 
-// Cập nhật trạng thái giao dịch theo paymentId
-app.put('/payments/:paymentId/status', async (req, res) => {
-    try {
-        const { status } = req.body;
-        const payment = await Payment.findOneAndUpdate(
-            { paymentId: req.params.paymentId },
-            { status },
-            { new: true }
-        );
-        if (!payment) return res.status(404).send('Payment record not found');
-
-        if (status === 'completed') {
-            // 1. Lấy thông tin user hiện tại
-            const userRes = await axios.get(`http://user-service:3002/users/${payment.payerId}`);
-            const user = userRes.data;
-
-            // 2. Kiểm tra số dư
-            if (user.balance < payment.amount) {
-                return res.status(400).send('Số dư không đủ để thanh toán');
-            }
-
-            // 3. Trừ tiền và cập nhật số dư
-            const newBalance = user.balance - payment.amount;
-            await axios.put(`http://user-service:3002/users/${payment.payerId}/balance`, {
-                balance: newBalance
-            });
-
-            // 4. Gọi Tuition-service để cập nhật trạng thái học phí
-            await axios.put(`http://tuition-service:3005/tuitions/${payment.studentId}/status`, {
-                status: 'paid'
-            });
-        }
-
-        res.send(payment);
-    } catch (error) {
-        res.status(500).send('Server error');
-    }
-});
-
-
-// API lấy thông tin giao dịch theo paymentId
+// API lấy payment theo ID
 app.get('/payments/:paymentId', async (req, res) => {
     try {
         const payment = await Payment.findOne({ paymentId: req.params.paymentId });
-        if (!payment) return res.status(404).send('Payment record not found');
-        res.send(payment);
+        if (!payment) return res.status(404).json({ message: 'Payment record not found' });
+        res.json(payment);
     } catch (error) {
-        res.status(500).send('Server error');
+        console.error('Error fetching payment:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 
-
-// API lấy tất cả giao dịch
+// API lấy payments theo payer
 app.get('/payments/payer/:payerId', async (req, res) => {
     try {
         const { payerId } = req.params;
-        const payments = await Payment.find({ payerId });
-        res.send(payments);
+        const payments = await Payment.find({ payerId }).sort({ createdAt: -1 });
+        res.json(payments);
     } catch (error) {
-        res.status(500).send('Server error');
+        console.error('Error fetching payments by payer:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
-app.listen(process.env.PORT, () => {
-    console.log(`Server is running on port ${process.env.PORT}`);
+
+app.listen(process.env.PORT || 3003, () => {
+    console.log(`Payment Service running on port ${process.env.PORT || 3003}`);
 });

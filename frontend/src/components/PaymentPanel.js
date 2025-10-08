@@ -1,17 +1,20 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Box, Paper, Typography, TextField, Button, Alert } from "@mui/material";
 import axios from "axios";
-import { useEffect } from "react";
-function PaymentPanel({ searchedStudent, loggedInStudent,onUpdateLoggedInStudent, 
-  onUpdateSearchedStudent  }) {
+import TermsAndConditions from './TermsAndConditions';
+
+function PaymentPanel({ searchedStudent, loggedInStudent, onUpdateLoggedInStudent, onUpdateSearchedStudent }) {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [message, setMessage] = useState("");
   const [transactionId, setTransactionId] = useState(null);
   const [isVerified, setIsVerified] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
-    // Reset state khi chuyển sinh viên khác
+  // Reset state khi chuyển sinh viên khác
   useEffect(() => {
     if (searchedStudent) {
       setOtpSent(false);
@@ -20,8 +23,10 @@ function PaymentPanel({ searchedStudent, loggedInStudent,onUpdateLoggedInStudent
       setTransactionId(null);
       setIsVerified(false);
       setLoading(false);
+      setTermsAccepted(false);
+      setShowTerms(false);
     }
-  }, [searchedStudent?.studentId]); // Reset khi studentId thay đổi
+  }, [searchedStudent?.studentId]);
 
   if (!searchedStudent) return null;
 
@@ -36,12 +41,7 @@ function PaymentPanel({ searchedStudent, loggedInStudent,onUpdateLoggedInStudent
           <Typography variant="body1"><strong>Email:</strong> {searchedStudent.email}</Typography>
           <Typography variant="body1" sx={{ color: 'red', fontWeight: 'bold' }}>
             <strong>Số tiền cần nộp:</strong>
-            <span
-              style={{
-                textDecoration: searchedStudent.tuitionStatus === 'paid' ? 'line-through' : 'none',
-                marginLeft: 4
-              }}
-            >
+            <span style={{ textDecoration: 'line-through', marginLeft: 4 }}>
               {searchedStudent.tuitionAmount?.toLocaleString('vi-VN')} VNĐ
             </span>
           </Typography>
@@ -51,7 +51,6 @@ function PaymentPanel({ searchedStudent, loggedInStudent,onUpdateLoggedInStudent
           </Typography>
         </Paper>
 
-        {/* Thông báo đã thanh toán */}
         <Paper elevation={3} sx={{ mt: 3, p: 3, borderRadius: 2, bgcolor: "#e8f5e8" }}>
           <Typography variant="h6" gutterBottom color="success">
             ✅ Học phí đã được thanh toán.
@@ -64,189 +63,174 @@ function PaymentPanel({ searchedStudent, loggedInStudent,onUpdateLoggedInStudent
     );
   }
 
+  // Hiển thị điều khoản trước khi gửi OTP
+  const handleInitiatePayment = () => {
+    setShowTerms(true);
+  };
 
-  // Gửi OTP thật qua Payment Service
+  const handleTermsAccepted = () => {
+    setTermsAccepted(true);
+    handleSendOTP();
+  };
+
+  // Gửi OTP với transaction locking
   const handleSendOTP = async () => {
     try {
       setLoading(true);
       setMessage("");
       const res = await axios.post("http://localhost:2000/api/transaction/payments", {
-        payerId: loggedInStudent.studentId, // Hoặc lấy từ user đăng nhập
+        payerId: loggedInStudent.studentId,
         studentId: searchedStudent.studentId,
         email: loggedInStudent.email,
       });
 
-      setTransactionId(res.data.paymentId); // Lưu paymentId làm transactionId
+      setTransactionId(res.data.paymentId);
       setOtpSent(true);
-      setMessage(`OTP đã được gửi tới email của bạn .`);
-  } catch (err) {
+      setMessage(`OTP đã được gửi tới email của bạn.`);
+    } catch (err) {
       console.error("Lỗi tạo giao dịch:", err);
       const errorMsg = err.response?.data?.message || "Không thể tạo giao dịch. Vui lòng thử lại.";
-      setMessage(errorMsg);
-  } finally {
-      setLoading(false);
-  }
-};
-
-    // Gửi lại OTP (không tạo payment mới)
-  const handleResendOTP = async () => {
-    try {
-      setLoading(true);
-      setMessage("");
-      await axios.post("http://localhost:2000/api/notifications/otp/resend", {
-        transactionId,
-        email: loggedInStudent.email,
-      });
-
-      setMessage("OTP mới đã được gửi tới email của bạn.");
-      setOtp(""); // Xóa OTP cũ
-    } catch (err) {
-      console.error("Lỗi gửi lại OTP:", err);
-      const errorMsg = err.response?.data?.message || "Không thể gửi lại OTP. Vui lòng thử lại.";
       setMessage(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
-    
-  // Xác minh OTP thật qua Notification Service
+  // Gửi lại OTP
+  const handleResendOTP = async () => {
+    try {
+      setLoading(true);
+      await axios.post("http://localhost:2000/api/notifications/otp/resend", {
+        transactionId: transactionId,
+        email: loggedInStudent.email,
+      });
+      setMessage("OTP mới đã được gửi lại tới email của bạn.");
+    } catch (err) {
+      console.error("Lỗi gửi lại OTP:", err);
+      setMessage("Không thể gửi lại OTP. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Xác nhận thanh toán
   const handleConfirmPayment = async () => {
     try {
       setLoading(true);
-      setMessage("");
-      
+
       // 1. Xác thực OTP
+      console.log('Verifying OTP...', { transactionId, otp });
       await axios.post("http://localhost:2000/api/notifications/otp/verify", {
-        transactionId,
-        otp,
+        transactionId: transactionId,
+        otp: otp,
       });
-
-      // 2. Cập nhật trạng thái payment sang completed
-      await axios.put(`http://localhost:2000/api/transaction/payments/${transactionId}/status`, {
-        status: 'completed'
-      });
-
-      // 3. Refresh thông tin sinh viên để cập nhật UI
-      await refreshStudentInfo();
 
       setIsVerified(true);
-      setMessage("Xác thực OTP thành công. Thanh toán hoàn tất.");
-    } catch (err) {
-      console.error("Lỗi xác minh OTP:", err);
-      const msg = err.response?.data?.message || "Lỗi không xác định.";
+      setMessage("Xác thực OTP thành công! Đang xử lý thanh toán...");
 
-      if (msg.includes("expired")) {
-        setMessage("Mã OTP đã hết hạn. Vui lòng nhập lại mã mới.");
-      } else if (msg.includes("Invalid")) {
-        setMessage("Mã OTP không hợp lệ. Vui lòng kiểm tra lại.");
-      } else {
-        setMessage("Có lỗi xảy ra khi xác minh OTP.");
+      // 2. Cập nhật trạng thái giao dịch thành completed
+      console.log('Updating payment status to completed...', transactionId);
+      await axios.put(`http://localhost:2000/api/transaction/payments/${transactionId}/status`, {
+        status: "completed",
+      });
+
+      setMessage("Đang cập nhật thông tin...");
+
+      // 3. Delay một chút để đảm bảo database đã được cập nhật
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 4. Reload thông tin sinh viên
+      console.log('Reloading student information...');
+      try {
+        const updatedLoggedIn = await axios.get(`http://localhost:2000/api/students/users/${loggedInStudent.studentId}`);
+        onUpdateLoggedInStudent(updatedLoggedIn.data);
+
+        const updatedSearched = await axios.get(`http://localhost:2000/api/students/users/${searchedStudent.studentId}`);
+        const tuitionRes = await axios.get(`http://localhost:2000/api/tuitions/tuitions/${searchedStudent.studentId}`);
+        
+        onUpdateSearchedStudent({
+          ...updatedSearched.data,
+          tuitionAmount: tuitionRes.data.tuitionAmount,
+          tuitionStatus: tuitionRes.data.status,
+        });
+      } catch (reloadError) {
+        console.error('Error reloading student info:', reloadError);
+        // Không throw error, chỉ log
       }
 
+      setMessage("Thanh toán học phí thành công!");
+      
+    } catch (err) {
+      console.error("Lỗi xác nhận thanh toán:", err);
+      
+      let errorMsg = "Xác nhận thanh toán thất bại.";
+      
+      if (err.response) {
+        console.error('Error response:', err.response.data);
+        console.error('Error status:', err.response.status);
+        
+        if (err.response.status === 409) {
+          errorMsg = err.response.data.message || "Có xung đột trong giao dịch, vui lòng thử lại";
+        } else if (err.response.status === 400) {
+          errorMsg = err.response.data.message || "Số dư không đủ hoặc dữ liệu không hợp lệ";
+        } else if (err.response.status === 500) {
+          errorMsg = "Lỗi hệ thống: " + (err.response.data.message || "Vui lòng thử lại sau");
+        } else {
+          errorMsg = err.response.data.message || errorMsg;
+        }
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      
+      setMessage(errorMsg);
       setIsVerified(false);
     } finally {
       setLoading(false);
     }
   };
 
-  // Hàm refresh thông tin sinh viên
-  const refreshStudentInfo = async () => {
-    try {
-      // Refresh thông tin người đăng nhập (số dư)
-      const loggedInRes = await axios.get(
-        `http://localhost:2000/api/students/users/${loggedInStudent.studentId}`
-      );
-      const loggedInTuitionRes = await axios.get(
-        `http://localhost:2000/api/tuitions/tuitions/${loggedInStudent.studentId}`
-      );
-      
-      // Refresh thông tin sinh viên được tìm kiếm (trạng thái học phí)
-      const searchedRes = await axios.get(
-        `http://localhost:2000/api/students/users/${searchedStudent.studentId}`
-      );
-      const searchedTuitionRes = await axios.get(
-        `http://localhost:2000/api/tuitions/tuitions/${searchedStudent.studentId}`
-      );
-
-      // Cập nhật state để trigger re-render
-      onUpdateLoggedInStudent({
-        ...loggedInRes.data,
-        tuitionAmount: loggedInTuitionRes.data.tuitionAmount,
-        tuitionStatus: loggedInTuitionRes.data.status,
-        dueDate: loggedInTuitionRes.data.duedate
-      });
-
-      onUpdateSearchedStudent({
-        ...searchedRes.data,
-        tuitionAmount: searchedTuitionRes.data.tuitionAmount,
-        tuitionStatus: searchedTuitionRes.data.status,
-        dueDate: searchedTuitionRes.data.duedate
-      });
-
-    } catch (error) {
-      console.error("Lỗi khi refresh thông tin:", error);
-    }
-  };
-
   return (
     <>
+      {/* Terms and Conditions Dialog */}
+      <TermsAndConditions
+        open={showTerms}
+        onClose={() => setShowTerms(false)}
+        onAccept={handleTermsAccepted}
+      />
+
       {/* Thông tin sinh viên */}
-      <Paper
-        elevation={3}
-        sx={{
-          mt: 3,
-          p: 3,
-          borderRadius: 2,
-          bgcolor: "#f9f9f9",
-        }}
-      >
-        <Typography variant="h6" gutterBottom>
-          Kết quả tìm kiếm
-        </Typography>
-        <Typography variant="body1">
-          <strong>Họ và tên:</strong> {searchedStudent.fullName}
-        </Typography>
-        <Typography variant="body1">
-          <strong>MSSV:</strong> {searchedStudent.studentId}
-        </Typography>
-        <Typography variant="body1">
-          <strong>Email:</strong> {searchedStudent.email}
-        </Typography>
-        <Typography
-          variant="body1"
-          sx={{
-            color: 'red',
-            fontWeight: 'bold',
-            textDecoration: searchedStudent.tuitionStatus === 'paid' ? 'line-through' : 'none'
-          }}
-        >
+      <Paper elevation={3} sx={{ mt: 3, p: 3, borderRadius: 2, bgcolor: "#f9f9f9" }}>
+        <Typography variant="h6" gutterBottom>Kết quả tìm kiếm</Typography>
+        <Typography variant="body1"><strong>Họ và tên:</strong> {searchedStudent.fullName}</Typography>
+        <Typography variant="body1"><strong>MSSV:</strong> {searchedStudent.studentId}</Typography>
+        <Typography variant="body1"><strong>Email:</strong> {searchedStudent.email}</Typography>
+        <Typography variant="body1" sx={{ color: 'red', fontWeight: 'bold' }}>
           Số tiền cần nộp: {searchedStudent.tuitionAmount?.toLocaleString('vi-VN')} VNĐ
         </Typography>
         <Typography variant="body1">
           <strong>Trạng thái:</strong> 
-          <span style={{ 
-            color: searchedStudent.tuitionStatus === 'paid' ? 'green' : 'orange',
-            fontWeight: 'bold' 
-    }}>
-          {searchedStudent.tuitionStatus === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
-      </span>
-  </Typography>
+          <span style={{ color: 'orange', fontWeight: 'bold' }}>Chưa thanh toán</span>
+        </Typography>
       </Paper>
 
       {/* Xác nhận thanh toán */}
-      <Paper
-        elevation={3}
-        sx={{
-          mt: 3,
-          p: 3,
-          borderRadius: 2,
-          bgcolor: "#f1f8e9",
-        }}
-      >
+      <Paper elevation={3} sx={{ mt: 3, p: 3, borderRadius: 2, bgcolor: "#f1f8e9" }}>
         <Typography variant="h6" gutterBottom>
           Xác nhận thanh toán học phí
         </Typography>
+
+        {/* Thông báo cảnh báo về số dư - chỉ hiển thị khi không đủ tiền */}
+        {loggedInStudent.balance < searchedStudent.tuitionAmount && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              <strong>Số dư hiện tại:</strong> {loggedInStudent.balance?.toLocaleString('vi-VN')} VNĐ<br/>
+              <strong>Số tiền cần thanh toán:</strong> {searchedStudent.tuitionAmount?.toLocaleString('vi-VN')} VNĐ<br/>
+              <span style={{ color: 'red', fontWeight: 'bold' }}>
+                ⚠️ Số dư không đủ để thực hiện giao dịch!
+              </span>
+            </Typography>
+          </Alert>
+        )}
 
         {/* Thông báo */}
         {message && (
@@ -267,10 +251,10 @@ function PaymentPanel({ searchedStudent, loggedInStudent,onUpdateLoggedInStudent
           <Button
             variant="contained"
             color="secondary"
-            onClick={handleSendOTP}
-            disabled={loading}
+            onClick={handleInitiatePayment}
+            disabled={loading || loggedInStudent.balance < searchedStudent.tuitionAmount}
           >
-            {loading ? "Đang gửi..." : "Xác nhận giao dịch (Gửi OTP)"}
+            {loading ? "Đang xử lý..." : "Xác nhận giao dịch"}
           </Button>
         ) : (
           <Box sx={{ mt: 2 }}>

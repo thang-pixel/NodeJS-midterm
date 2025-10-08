@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Container, 
@@ -114,9 +115,7 @@ function TransactionHistory() {
       <Navbar />
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         {/* Header */}
-        <Typography variant="h4" align="center" sx={{ mb: 4 }}>
-          Lịch sử giao dịch
-        </Typography>
+        
       <Paper 
         elevation={3} 
         sx={{ 

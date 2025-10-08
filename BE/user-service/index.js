@@ -11,13 +11,14 @@ mongoose.connect(process.env.MONGO_URI, {
 }).then(() => console.log('MongoDB connected'))
     .catch(err => console.log(err));
 
-
 const userSchema = new mongoose.Schema({
     studentId: { type: String, required: true, unique: true },
     fullName: { type: String, required: true },
-    phone:    { type: String, required: true },
-    email:    { type: String, required: true, unique: true },
-    balance:  { type: Number, required: true, default: 0 }
+    phone: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    balance: { type: Number, required: true, default: 0 },
+    // Thêm field để track processing
+    lastUpdated: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
 
@@ -32,24 +33,74 @@ app.get('/users/:studentId', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
-//Cập nhật số dư khả dụng theo studentId
+
+// Cập nhật số dư với atomic operation
 app.put('/users/:studentId/balance', async (req, res) => {
     try {
         const { balance } = req.body;
+        const studentId = req.params.studentId;
+
+        // Sử dụng findOneAndUpdate với atomic operation
         const user = await User.findOneAndUpdate(
-            { studentId: req.params.studentId },
-            { balance },
-            { new: true }
+            { 
+                studentId,
+                balance: { $gte: 0 } // Đảm bảo balance không âm
+            },
+            { 
+                balance,
+                lastUpdated: new Date()
+            },
+            { 
+                new: true,
+                runValidators: true
+            }
         );
-        if (!user) return res.status(404).send('User not found');
-        res.send(user);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found or invalid balance operation' });
+        }
+
+        res.json(user);
     } catch (error) {
-        res.status(500).send('Server error');
+        console.error('Error updating balance:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 
+// API cập nhật balance với kiểm tra điều kiện
+app.put('/users/:studentId/balance/conditional', async (req, res) => {
+    try {
+        const { newBalance, expectedCurrentBalance } = req.body;
+        const studentId = req.params.studentId;
 
+        // Cập nhật chỉ khi balance hiện tại đúng với expected
+        const user = await User.findOneAndUpdate(
+            { 
+                studentId,
+                balance: expectedCurrentBalance
+            },
+            { 
+                balance: newBalance,
+                lastUpdated: new Date()
+            },
+            { 
+                new: true,
+                runValidators: true
+            }
+        );
 
+        if (!user) {
+            return res.status(409).json({ 
+                message: 'Balance has been modified by another transaction' 
+            });
+        }
+
+        res.json(user);
+    } catch (error) {
+        console.error('Error updating balance conditionally:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 
 app.listen(process.env.PORT, () => {
     console.log(`User service running on port ${process.env.PORT}`);

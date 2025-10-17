@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { Box, Button, TextField, Typography } from "@mui/material";
+import { Box, Button, TextField, Typography,Alert } from "@mui/material";
 
-function SearchPanel({ onSearch }) {
+function SearchPanel({ onSearch,error }) {
   const [mssv, setMssv] = useState("");
 
   const handleSubmit = (e) => {
@@ -46,6 +46,12 @@ function SearchPanel({ onSearch }) {
           Tìm kiếm
         </Button>
       </Box>
+      {/* Hiển thị thông báo lỗi */}
+      {error && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      )}
     </Box>
   );
 }

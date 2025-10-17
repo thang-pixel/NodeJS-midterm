@@ -162,9 +162,9 @@ function PaymentPanel({ searchedStudent, loggedInStudent, onUpdateLoggedInStuden
       
     } catch (err) {
       console.error("Lỗi xác nhận thanh toán:", err);
-      
-      let errorMsg = "Xác nhận thanh toán thất bại.";
-      
+
+      let errorMsg = "Xác nhận thanh toán thất bại, Mã OTP không hợp lệ.";
+
       if (err.response) {
         console.error('Error response:', err.response.data);
         console.error('Error status:', err.response.status);

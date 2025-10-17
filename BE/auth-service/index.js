@@ -35,7 +35,7 @@ app.post('/login', async (req, res) => {
     const user = await auth.findOne({ username, password });
     console.log("User found:", user); // Xem user có studentId không
     if (!user) {
-      return res.status(401).json({ message: 'Invalid username or password' });
+      return res.status(401).json({ message: 'tài khoản hoặc mật khẩu không chính xác' });
     }
 
     const token = jwt.sign(

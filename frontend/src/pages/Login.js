@@ -51,7 +51,7 @@ function Login() {
                 }}
             >
                 <Typography component="h1" variant="h5">
-                    Login
+                    Đăng Nhập
                 </Typography>
                 <Box component="form" onSubmit={handleLogin} sx={{ mt: 1 }}>
                     <TextField
@@ -60,7 +60,7 @@ function Login() {
                         required
                         fullWidth
                         id="username"
-                        label="Username"
+                        label="Tài khoản"
                         name="username"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
@@ -72,7 +72,7 @@ function Login() {
                         required
                         fullWidth
                         name="password"
-                        label="Password"
+                        label="Mật khẩu"
                         type="password"
                         id="password"
                         value={password}

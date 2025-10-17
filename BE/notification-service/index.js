@@ -69,10 +69,10 @@ async function startOtpConsumer() {
         await otpRecord.save();
 
         const mailOptions = {
-          from: process.env.EMAIL_USER,
+          from: "Hệ thống TDTU iBanking",
           to: email,
-          subject: 'Your OTP Code',
-          text: `Your OTP code is ${otp}. It is valid for 5 minutes.`
+          subject: 'Mã OTP của bạn',
+          text: `Mã OTP của bạn là ${otp}. Nó sẽ hết hạn sau 1 phút.`
         };
 
         await transporter.sendMail(mailOptions);
@@ -114,16 +114,16 @@ app.post('/otp/resend', async (req, res) => {
     await otpRecord.save();
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: "Hệ thống TDTU iBanking",
       to: email,
-      subject: 'Your New OTP Code',
-      text: `Your new OTP code is ${otp}. It is valid for 5 minutes.`
+      subject: 'Mã OTP mới',
+      text: `Mã OTP mới của bạn là ${otp}. Nó sẽ hết hạn sau 1 phút.`
     };
 
     await transporter.sendMail(mailOptions);
     console.log(`New OTP sent to ${email} for transaction ${transactionId}`);
 
-    res.json({ message: 'New OTP sent successfully' });
+    res.json({ message: 'Mã OTP mới được gửi thành công' });
   } catch (error) {
     console.error('Error resending OTP:', error.message);
     res.status(500).json({ message: 'Server error' });

@@ -57,13 +57,46 @@ function Home() {
     }
   } catch (err) {
     console.error("Lỗi khi lấy thông tin sinh viên:", err);
-    alert("Không tìm thấy sinh viên hoặc thông tin học phí.");
+    
+    // Xử lý lỗi chi tiết hơn
+    if (isLoggedInUser) {
+      console.error("Không thể tải thông tin người dùng đăng nhập");
+      return;
+    }
+
+    // Xóa kết quả tìm kiếm trước đó
+    setSearchedStudent(null);
+    
+    // Hiển thị thông báo lỗi chi tiết
+    let errorMessage = "Đã xảy ra lỗi khi tìm kiếm thông tin sinh viên.";
+    
+    if (err.response) {
+      switch (err.response.status) {
+        case 404:
+          errorMessage = `Không tìm thấy sinh viên có MSSV: ${studentId}. Vui lòng kiểm tra lại MSSV.`;
+          break;
+        case 500:
+          errorMessage = "Lỗi hệ thống. Vui lòng thử lại sau.";
+          break;
+        default:
+          errorMessage = err.response.data?.message || "Không thể kết nối đến hệ thống.";
+      }
+    } else if (err.request) {
+      errorMessage = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.";
+    }
+    
+    // Truyền lỗi xuống SearchPanel để hiển thị
+    setSearchError(errorMessage);
   }
 };
+
+// Thêm state cho search error
+const [searchError, setSearchError] = useState("");
 
   // Khi người dùng tìm sinh viên khác bằng MSSV
   const handleSearchStudent = (mssv) => {
     if (mssv.trim()) {
+      setSearchError(""); // Xóa lỗi cũ
       fetchStudentInfo(mssv.trim(), false);
     }
   };
@@ -76,15 +109,17 @@ function Home() {
           Đóng học phí
         </Typography>
 
-        <Grid container spacing={2}>
+        <Grid container spacing={2} >
           {/* Cột trái: thông tin người đăng nhập */}
-          <Grid item xs={4}>
+          <Grid item xs={4} size={4}>
             <ProfilePanel loggedInStudent={loggedInStudent} />
           </Grid>
 
           {/* Cột phải: tra cứu & thanh toán */}
-          <Grid item xs={8}>
-            <SearchPanel onSearch={handleSearchStudent} />
+          <Grid item xs={8} size={8}>
+            <SearchPanel onSearch={handleSearchStudent}
+            error={searchError}
+             />
             <PaymentPanel 
               searchedStudent={searchedStudent} 
               loggedInStudent={loggedInStudent}

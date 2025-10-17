@@ -17,6 +17,7 @@
     "ioredis": "^5.8.0",
     "mongoose": "^8.19.0",
     "nodemailer": "^7.0.7",
-    "amqplib": "^0.10.3"
+    "amqplib": "^0.10.3",
+    "axios": "^1.6.0"
   }
 }

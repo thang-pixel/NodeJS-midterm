@@ -72,7 +72,7 @@ async function startOtpConsumer() {
           from: "Hệ thống TDTU iBanking",
           to: email,
           subject: 'Mã OTP của bạn',
-          text: `Mã OTP của bạn là ${otp}. Nó sẽ hết hạn sau 1 phút.`
+          text: `Mã OTP của bạn là ${otp}. Nó sẽ có hiệu lực trong vòng 1 phút.`
         };
 
         await transporter.sendMail(mailOptions);
@@ -89,7 +89,78 @@ async function startOtpConsumer() {
 
 startOtpConsumer();
 
+// Hàm lắng nghe request gửi hóa đơn
+async function startInvoiceConsumer() {
+  const queue = 'invoice_queue';
+  const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost');
+  const channel = await conn.createChannel();
+  await channel.assertQueue(queue, { durable: true });
 
+  channel.consume(queue, async (msg) => {
+    if (msg !== null) {
+      try {
+        const { transactionId, email, payerName, studentId, amount, time } = JSON.parse(msg.content.toString());
+
+        const mailOptions = {
+          from: "Hệ thống iBanking TDTU <noreply@tdtu.edu.vn>",
+          to: email,
+          subject: 'Hóa đơn điện tử thanh toán học phí',
+          html: `
+            <div style="font-family:Roboto,Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 2px 8px #e0e0e0;background:#f9f9f9;">
+              <div style="background:#1565c0;padding:24px 0;border-radius:8px 8px 0 0;text-align:center;">
+                <h1 style="color:#fff;margin:0;font-size:2rem;">TDTU iBanking</h1>
+                <p style="color:#e3f2fd;font-size:1.1rem;margin:0;">Hóa đơn điện tử thanh toán học phí</p>
+              </div>
+              <div style="padding:32px;">
+                <table style="width:100%;font-size:1.05rem;">
+                  <tr>
+                    <td><strong>Mã giao dịch:</strong></td>
+                    <td style="color:#1565c0;font-weight:bold;">${transactionId}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Người nộp tiền:</strong></td>
+                    <td>${payerName}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>MSSV:</strong></td>
+                    <td>${studentId}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Số tiền đã thanh toán:</strong></td>
+                    <td style="color:#d32f2f;font-weight:bold;">${amount.toLocaleString('vi-VN')} VNĐ</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Thời gian giao dịch:</strong></td>
+                    <td>${time}</td>
+                  </tr>
+                </table>
+                <div style="margin:32px 0 0 0;">
+                  <p style="color:#388e3c;font-size:1.1rem;">
+                    ✅ Giao dịch thanh toán học phí đã được thực hiện thành công.<br>
+                    Cảm ơn bạn đã sử dụng dịch vụ iBanking của TDTU.
+                  </p>
+                </div>
+              </div>
+              <div style="background:#e3f2fd;padding:16px;text-align:center;border-radius:0 0 8px 8px;">
+                <small style="color:#1565c0;">Mọi thắc mắc vui lòng liên hệ phòng tài vụ TDTU hoặc email: support@tdtu.edu.vn</small>
+              </div>
+            </div>
+          `
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`Invoice sent to ${email} for transaction ${transactionId}`);
+
+        channel.ack(msg);
+      } catch (error) {
+        console.error('Error processing invoice message:', error.message);
+        // Không ack để có thể retry nếu cần
+      }
+    }
+  });
+}
+
+startInvoiceConsumer();
 
 // API gửi lại OTP cho payment đã tồn tại
 app.post('/otp/resend', async (req, res) => {
@@ -117,7 +188,7 @@ app.post('/otp/resend', async (req, res) => {
       from: "Hệ thống TDTU iBanking",
       to: email,
       subject: 'Mã OTP mới',
-      text: `Mã OTP mới của bạn là ${otp}. Nó sẽ hết hạn sau 1 phút.`
+      text: `Mã OTP mới của bạn là ${otp}. Nó sẽ có hiệu lực trong vòng 1 phút.`
     };
 
     await transporter.sendMail(mailOptions);

@@ -43,19 +43,19 @@ app.post('/payments', async (req, res) => {
             });
             
             return res.status(200).json({ 
-                message: 'Payment already exists, OTP resent', 
+                message: 'Giao dịch chờ đã tồn tại, OTP đã được gửi lại', 
                 paymentId: existingPayment.paymentId 
             });
         }
 
         const tuitionRes = await axios.get(`http://tuition-service:3005/tuitions/${studentId}`);
         if (!tuitionRes.data || tuitionRes.status !== 200) {
-            return res.status(404).json({ message: 'Tuition record not found' });
+            return res.status(404).json({ message: 'Không tìm thấy thông tin học phí' });
         }
         const tuition = tuitionRes.data;
 
         if (tuition.status === 'paid') {
-            return res.status(400).json({ message: 'Tuition already paid' });
+            return res.status(400).json({ message: 'Học phí đã được thanh toán' });
         }
 
         const amount = tuition.tuitionAmount;
@@ -65,10 +65,10 @@ app.post('/payments', async (req, res) => {
 
         await sendOtpToQueue({ transactionId: paymentId, email });
 
-        res.status(201).json({ message: 'Payment created, OTP sent', paymentId });
+        res.status(201).json({ message: 'Giao dịch đã được tạo, OTP đã được gửi', paymentId });
     } catch (error) {
         console.error('Error creating payment:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Lỗi server' });
     }
 });
 
@@ -84,13 +84,13 @@ app.put('/payments/:paymentId/status', async (req, res) => {
         const payment = await Payment.findOne({ paymentId });
         if (!payment) {
             console.error('Payment not found:', paymentId);
-            return res.status(404).json({ message: 'Payment record not found' });
+            return res.status(404).json({ message: 'Không tìm thấy giao dịch' });
         }
 
         // 2. Kiểm tra trạng thái hiện tại
         if (payment.status !== 'pending') {
             console.error('Payment not pending:', payment.status);
-            return res.status(400).json({ message: 'Payment is not in pending status' });
+            return res.status(400).json({ message: 'Giao dịch không trong trạng thái chờ' });
         }
 
         // 3. Kiểm tra processing lock đơn giản
@@ -113,7 +113,7 @@ app.put('/payments/:paymentId/status', async (req, res) => {
                 // 5. Kiểm tra học phí
                 const tuitionCheck = await axios.get(`http://tuition-service:3005/tuitions/${payment.studentId}`);
                 if (tuitionCheck.data.status === 'paid') {
-                    throw new Error('Tuition has been paid by another transaction');
+                    throw new Error('Học phí đã được thanh toán bởi giao dịch khác');
                 }
 
                 // 6. Lấy thông tin user
@@ -121,7 +121,7 @@ app.put('/payments/:paymentId/status', async (req, res) => {
                 const user = userRes.data;
 
                 if (user.balance < payment.amount) {
-                    throw new Error('Insufficient balance');
+                    throw new Error('Số dư không đủ');
                 }
 
                 // 7. Cập nhật số dư user
@@ -146,7 +146,15 @@ app.put('/payments/:paymentId/status', async (req, res) => {
                 );
 
                 console.log('Payment completed successfully:', paymentId);
-
+                // Gửi hóa đơn điện tử qua RabbitMQ
+                await sendInvoiceToQueue({
+                    transactionId: paymentId,
+                    email: user.email,
+                    payerName: user.fullName,
+                    studentId: payment.studentId,
+                    amount: payment.amount,
+                    time: new Date().toLocaleString()
+                });
             } catch (processError) {
                 // Reset processing flag nếu có lỗi
                 await Payment.updateOne(
@@ -171,7 +179,7 @@ app.put('/payments/:paymentId/status', async (req, res) => {
         res.json(updatedPayment);
 
     } catch (error) {
-        console.error('Error updating payment status:', error);
+        console.error('Lỗi cập nhật trạng thái giao dịch:', error);
         
         // Trả về lỗi cụ thể
         if (error.message === 'Tuition has been paid by another transaction') {
@@ -201,15 +209,31 @@ async function sendOtpToQueue(message) {
     }
 }
 
+// Hàm gửi hóa đơn đến RabbitMQ
+async function sendInvoiceToQueue(invoice) {
+    try {
+        const queue = 'invoice_queue';
+        const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://admin:admin123@localhost:5672');
+        const channel = await conn.createChannel();
+        await channel.assertQueue(queue, { durable: true });
+        channel.sendToQueue(queue, Buffer.from(JSON.stringify(invoice)), { persistent: true });
+        setTimeout(() => { conn.close(); }, 500);
+        console.log('Invoice message sent to queue:', invoice);
+    } catch (error) {
+        console.error('Error sending invoice to queue:', error);
+        throw error;
+    }
+}
+
 // API lấy payment theo ID
 app.get('/payments/:paymentId', async (req, res) => {
     try {
         const payment = await Payment.findOne({ paymentId: req.params.paymentId });
-        if (!payment) return res.status(404).json({ message: 'Payment record not found' });
+        if (!payment) return res.status(404).json({ message: 'Không tìm thấy payment' });
         res.json(payment);
     } catch (error) {
         console.error('Error fetching payment:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Lỗi server' });
     }
 });
 
@@ -221,7 +245,7 @@ app.get('/payments/payer/:payerId', async (req, res) => {
         res.json(payments);
     } catch (error) {
         console.error('Error fetching payments by payer:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Lỗi server' });
     }
 });
 

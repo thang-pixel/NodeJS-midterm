@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Box, Paper, Typography, TextField, Button, Alert } from "@mui/material";
 import axios from "axios";
@@ -13,7 +12,8 @@ function PaymentPanel({ searchedStudent, loggedInStudent, onUpdateLoggedInStuden
   const [loading, setLoading] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-
+  const [timerInterval, setTimerInterval] = useState(null);
+  const [otpTimer, setOtpTimer] = useState(0);
   // Reset state khi chuyển sinh viên khác
   useEffect(() => {
     if (searchedStudent) {
@@ -87,6 +87,19 @@ function PaymentPanel({ searchedStudent, loggedInStudent, onUpdateLoggedInStuden
       setTransactionId(res.data.paymentId);
       setOtpSent(true);
       setMessage(`OTP đã được gửi tới email của bạn.`);
+      setOtpTimer(60);
+      // Bắt đầu đếm ngược OTP
+      if (timerInterval) clearInterval(timerInterval);
+        const interval = setInterval(() => {
+          setOtpTimer(prev => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        setTimerInterval(interval);
     } catch (err) {
       console.error("Lỗi tạo giao dịch:", err);
       const errorMsg = err.response?.data?.message || "Không thể tạo giao dịch. Vui lòng thử lại.";
@@ -105,6 +118,18 @@ function PaymentPanel({ searchedStudent, loggedInStudent, onUpdateLoggedInStuden
         email: loggedInStudent.email,
       });
       setMessage("OTP mới đã được gửi lại tới email của bạn.");
+      setOtpTimer(60);
+      if (timerInterval) clearInterval(timerInterval);
+        const interval = setInterval(() => {
+          setOtpTimer(prev => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        setTimerInterval(interval);
     } catch (err) {
       console.error("Lỗi gửi lại OTP:", err);
       setMessage("Không thể gửi lại OTP. Vui lòng thử lại.");
@@ -162,9 +187,9 @@ function PaymentPanel({ searchedStudent, loggedInStudent, onUpdateLoggedInStuden
       
     } catch (err) {
       console.error("Lỗi xác nhận thanh toán:", err);
-
-      let errorMsg = "Xác nhận thanh toán thất bại, Mã OTP không hợp lệ.";
-
+      
+      let errorMsg = "Xác nhận thanh toán thất bại.";
+      
       if (err.response) {
         console.error('Error response:', err.response.data);
         console.error('Error status:', err.response.status);
@@ -265,12 +290,13 @@ function PaymentPanel({ searchedStudent, loggedInStudent, onUpdateLoggedInStuden
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
               sx={{ mr: 2 }}
+              disabled={otpTimer === 0}
             />
             <Button
               variant="contained"
               color="success"
               onClick={handleConfirmPayment}
-              disabled={loading || isVerified}
+              disabled={loading || isVerified || otpTimer === 0}
             >
               {loading ? "Đang xác minh..." : "Xác nhận lần cuối"}
             </Button>
@@ -281,10 +307,16 @@ function PaymentPanel({ searchedStudent, loggedInStudent, onUpdateLoggedInStuden
                 color="secondary"
                 onClick={handleResendOTP}
                 sx={{ ml: 2 }}
+                disabled={otpTimer > 0}
               >
                 Gửi lại mã OTP
               </Button>
             )}
+            <Typography variant="body2" sx={{ mt: 1, color: otpTimer === 0 ? 'red' : 'inherit' }}>
+              {otpTimer > 0
+                ? `Mã OTP sẽ hết hiệu lực sau ${otpTimer} giây`
+                : "Mã OTP đã hết hiệu lực. Vui lòng ấn gửi lại mã OTP."}
+            </Typography>
           </Box>
         )}
       </Paper>

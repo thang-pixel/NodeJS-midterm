@@ -27,11 +27,15 @@ const authSchema = new mongoose.Schema({
 
 const auth = mongoose.model('Auth', authSchema);
 
+
+
 // API đăng nhập
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
+  console.log("Login attempt:", { username, password });
 
   try {
+    console.log("All users:", await auth.find());
     const user = await auth.findOne({ username, password });
     console.log("User found:", user); // Xem user có studentId không
     if (!user) {
@@ -55,6 +59,24 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// Api lấy tất cả user (dùng để test)
+app.get('/', async (req, res) => {
+  try {
+    // trick
+    // await new auth
+    // ({ studentId: '52300070', username: 'tranthuyen2222@gmail.com', password: '123456', email: 'ttranthuyen2222@gmail.com' }).
+    // save();
+    console.log('Fetching all users');
+
+    const users = await auth.find();
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Chạy server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`User Auth Service running on port ${PORT}`));

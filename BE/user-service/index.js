@@ -24,6 +24,7 @@ const User = mongoose.model('User', userSchema);
 
 // API lấy thông tin người dùng theo studentId
 app.get('/users/:studentId', async (req, res) => {
+    
     console.log('User-service received:', req.method, req.originalUrl);
     try {
         const user = await User.findOne({ studentId: req.params.studentId });
@@ -99,6 +100,16 @@ app.put('/users/:studentId/balance/conditional', async (req, res) => {
     } catch (error) {
         console.error('Error updating balance conditionally:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// lay danh sach tat ca user (de test)
+app.get('/', async (req, res) => {
+    try {
+        const users = await User.find();
+        res.send(users);
+    } catch (error) {
+        res.status(500).send('Server error');
     }
 });
 

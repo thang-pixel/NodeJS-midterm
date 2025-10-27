@@ -16,7 +16,7 @@ app.use('/api/auth', createProxyMiddleware({
   target: process.env.AUTH_SERVICE_URL || 'http://auth-service:3001',
   changeOrigin: true,
   pathRewrite: {
-    '^/api/auth': '',   // xoá "/api/auth", còn lại "/login"
+    '^/api/auth': '',   // xoá "/api/auth"
   },
   logLevel: 'debug'
 }));

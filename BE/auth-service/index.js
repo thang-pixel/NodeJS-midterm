@@ -3,7 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-
+const axios = require('axios');
 const app = express();
 app.use(express.json());
 app.use(cors({
@@ -27,7 +27,7 @@ const authSchema = new mongoose.Schema({
 
 const auth = mongoose.model('Auth', authSchema);
 
-const axios = require('axios'); // Thêm dòng này
+
 
 // API đăng ký
 app.post('/register', async (req, res) => {
@@ -44,7 +44,7 @@ app.post('/register', async (req, res) => {
     await newAuth.save();
 
     // Tạo user ở user-service
-    await axios.post('http://localhost:3002/users', {
+    await axios.post('http://user-service:3002/users', {
       studentId,
       fullName,
       phone,
@@ -53,7 +53,7 @@ app.post('/register', async (req, res) => {
     });
 
     // Tạo học phí ở tuition-service
-    await axios.post('http://localhost:3003/tuitions', {
+    await axios.post('http://tuition-service:3003/tuitions', {
       studentId,
       tuitionAmount: 5000000,
       duedate: new Date(Date.now() + 30*24*60*60*1000), // hạn 30 ngày

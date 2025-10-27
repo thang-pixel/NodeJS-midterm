@@ -46,6 +46,22 @@ app.put('/tuitions/:studentId/status', async (req, res) => {
     }
 });
 
+// API tạo học phí mới
+app.post('/tuitions', async (req, res) => {
+    try {
+        const { studentId, tuitionAmount, duedate, status } = req.body;
+        const existed = await Tuition.findOne({ studentId });
+        if (existed) return res.status(400).json({ message: 'Tuition record đã tồn tại' });
+
+        const tuition = new Tuition({ studentId, tuitionAmount, duedate, status });
+        await tuition.save();
+        res.json(tuition);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+
 
 app.listen(process.env.PORT, () => {
     console.log(`Server is running on port ${process.env.PORT}`);

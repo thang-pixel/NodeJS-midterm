@@ -45,10 +45,27 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// Kết nối RabbitMQ với cơ chế retry
+async function connectRabbitMQWithRetry(url, maxRetries = 10, delay = 5000) {
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      const conn = await amqp.connect(url);
+      return conn;
+    } catch (err) {
+      console.error(`RabbitMQ connection failed (${retries + 1}/${maxRetries}):`, err.message);
+      retries++;
+      await new Promise(res => setTimeout(res, delay));
+    }
+  }
+  throw new Error('Could not connect to RabbitMQ after multiple attempts');
+}
+
+
 // Tạo và gửi OTP
 async function startOtpConsumer() {
   const queue = 'otp_queue';
-  const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost');
+  const conn = await connectRabbitMQWithRetry(process.env.RABBITMQ_URL || 'amqp://localhost');
   const channel = await conn.createChannel();
   await channel.assertQueue(queue, { durable: true });
 
@@ -92,7 +109,7 @@ startOtpConsumer();
 // Hàm lắng nghe request gửi hóa đơn
 async function startInvoiceConsumer() {
   const queue = 'invoice_queue';
-  const conn = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://localhost');
+  const conn = await connectRabbitMQWithRetry(process.env.RABBITMQ_URL || 'amqp://localhost');
   const channel = await conn.createChannel();
   await channel.assertQueue(queue, { durable: true });
 

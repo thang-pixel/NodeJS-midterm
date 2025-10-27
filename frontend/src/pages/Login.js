@@ -92,7 +92,17 @@ function Login() {
                             {message}
                         </Alert>
                     )}
+                    <Button
+                        fullWidth
+                        variant="text"
+                        color="secondary"
+                        sx={{ mt: 2 }}
+                        onClick={() => navigate('/register')}
+                    >
+                        Chưa có tài khoản? Đăng ký
+                    </Button>
                 </Box>
+
             </Box>
         </Container>
     );

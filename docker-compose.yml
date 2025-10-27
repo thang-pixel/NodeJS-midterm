@@ -1,8 +1,8 @@
+version: "3.8"
 services:
   api-gateway:
-    build:
-      context: ./BE/api-gateway
-      dockerfile: Dockerfile
+    image: api-gateway:latest
+    
     ports:
       - "2000:2000"
     environment:
@@ -19,9 +19,8 @@ services:
       - tuition-service
 
   auth-service:
-    build:
-      context: ./BE/auth-service
-      dockerfile: Dockerfile
+    image: auth-service:latest
+    
     ports:
       - "3001:3001"
     environment:
@@ -30,9 +29,9 @@ services:
       - mongo
 
   user-service:
-    build:
-      context: ./BE/user-service
-      dockerfile: Dockerfile
+    image: user-service:latest
+    
+    
     ports:
       - "3002:3002"
     environment:
@@ -41,9 +40,9 @@ services:
       - mongo
 
   payment-service:
-    build:
-      context: ./BE/payment-service
-      dockerfile: Dockerfile
+    image: payment-service:latest
+    
+    
     ports:
       - "3003:3003"
     environment:
@@ -65,11 +64,8 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
 
   notification-service:
-    build:
-      context: ./BE/notification-service
-      dockerfile: Dockerfile
-    ports:
-      - "3004:3004"
+    image: notification-service:latest
+    
     environment:
       - MONGO_URI=mongodb://mongo:27017/notification-db
       - EMAIL_USER=minhtuank27tdtu@gmail.com
@@ -79,20 +75,22 @@ services:
     depends_on:
       - mongo
       - rabbitmq
+    deploy:
+      replicas: 3 # Số lượng bản sao
+      restart_policy:
+        condition: on-failure
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: frontend:latest
+    
     ports:
       - "3000:3000"
     depends_on:
       - api-gateway
 
   tuition-service:
-    build:
-      context: ./BE/Tuition-service
-      dockerfile: Dockerfile
+    image: tuition-service:latest
+    
     ports:
       - "3005:3005"
     environment:
@@ -105,7 +103,7 @@ services:
   mongo:
     image: mongo:latest
     ports:
-      - "27018:27017"
+      - "27017:27017"
     volumes:
       - mongo-data:/data/db
 

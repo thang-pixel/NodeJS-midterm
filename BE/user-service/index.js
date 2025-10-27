@@ -34,6 +34,23 @@ app.get('/users/:studentId', async (req, res) => {
     }
 });
 
+
+
+// API tạo user mới
+app.post('/users', async (req, res) => {
+    try {
+        const { studentId, fullName, phone, email, balance } = req.body;
+        const existed = await User.findOne({ studentId });
+        if (existed) return res.status(400).json({ message: 'User đã tồn tại' });
+
+        const user = new User({ studentId, fullName, phone, email, balance });
+        await user.save();
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Cập nhật số dư với atomic operation
 app.put('/users/:studentId/balance', async (req, res) => {
     try {

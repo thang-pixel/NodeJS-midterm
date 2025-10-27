@@ -57,7 +57,7 @@ app.post('/tuitions/add', async (req, res) => {
         await tuition.save();
         res.json(tuition);
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Tuition Error' });
     }
 });
 

@@ -37,7 +37,7 @@ app.get('/users/:studentId', async (req, res) => {
 
 
 // API tạo user mới
-app.post('/users', async (req, res) => {
+app.post('/users/add', async (req, res) => {
     try {
         const { studentId, fullName, phone, email, balance } = req.body;
         const existed = await User.findOne({ studentId });

@@ -44,7 +44,7 @@ app.post('/register', async (req, res) => {
     await newAuth.save();
 
     // Tạo user ở user-service
-    await axios.post('http://user-service:3002/users', {
+    await axios.post('http://user-service:3002/users/add', {
       studentId,
       fullName,
       phone,
@@ -53,7 +53,7 @@ app.post('/register', async (req, res) => {
     });
 
     // Tạo học phí ở tuition-service
-    await axios.post('http://tuition-service:3003/tuitions', {
+    await axios.post('http://tuition-service:3003/tuitions/add', {
       studentId,
       tuitionAmount: 5000000,
       duedate: new Date(Date.now() + 30*24*60*60*1000), // hạn 30 ngày
@@ -62,7 +62,7 @@ app.post('/register', async (req, res) => {
 
     res.json({ message: 'Đăng ký thành công' });
   } catch (error) {
-    console.error('Register error:', error.message);
+    console.error('Register error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

@@ -47,7 +47,7 @@ app.put('/tuitions/:studentId/status', async (req, res) => {
 });
 
 // API tạo học phí mới
-app.post('/tuitions', async (req, res) => {
+app.post('/tuitions/add', async (req, res) => {
     try {
         const { studentId, tuitionAmount, duedate, status } = req.body;
         const existed = await Tuition.findOne({ studentId });

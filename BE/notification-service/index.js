@@ -14,11 +14,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => console.log('MongoDB connected for Notification Service'))
-  .catch(err => console.error('MongoDB connection error:', err));
+connectMongoWithRetry(process.env.MONGO_URI || 'mongodb://mongo:27017/notification-db');
 
 const otpSchema = new mongoose.Schema({
   transactionId: { type: String, required: true },
@@ -61,6 +57,22 @@ async function connectRabbitMQWithRetry(url, maxRetries = 10, delay = 5000) {
   throw new Error('Could not connect to RabbitMQ after multiple attempts');
 }
 
+
+async function connectMongoWithRetry(uri, maxRetries = 10, delay = 5000) {
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      await mongoose.connect(uri);
+      console.log('MongoDB connected for Notification Service');
+      return;
+    } catch (err) {
+      console.error(`MongoDB connection failed (${retries + 1}/${maxRetries}):`, err.message);
+      retries++;
+      await new Promise(res => setTimeout(res, delay));
+    }
+  }
+  throw new Error('Could not connect to MongoDB after multiple attempts');
+}
 
 // Tạo và gửi OTP
 async function startOtpConsumer() {

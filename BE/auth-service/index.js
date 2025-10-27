@@ -53,7 +53,7 @@ app.post('/register', async (req, res) => {
     });
 
     // Tạo học phí ở tuition-service
-    await axios.post('http://tuition-service:3003/tuitions/add', {
+    await axios.post('http://tuition-service:3005/tuitions/add', {
       studentId,
       tuitionAmount: 5000000,
       duedate: new Date(Date.now() + 30*24*60*60*1000), // hạn 30 ngày

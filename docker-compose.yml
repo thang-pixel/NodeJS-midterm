@@ -2,10 +2,11 @@ services:
   api-gateway:
     build:
       context: ./BE/api-gateway
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile 
     ports:
-      - "2000:2000"
+      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
     environment:
+      - PORT:${GATEWAY_PORT}
       - AUTH_SERVICE_URL=http://auth-service:3001
       - USER_SERVICE_URL=http://user-service:3002
       - PAYMENT_SERVICE_URL=http://payment-service:3003
@@ -23,9 +24,11 @@ services:
       context: ./BE/auth-service
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "3001:3001" 
     environment:
-      - MONGO_URI=mongodb://mongo:27017/auth-db
+      - PORT=3001
+      - MONGO_URI=${MONGO_URI}auth-db
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - mongo
 
@@ -34,9 +37,10 @@ services:
       context: ./BE/user-service
       dockerfile: Dockerfile
     ports:
-      - "3002:3002"
+      - "3002:3002" 
     environment:
-      - MONGO_URI=mongodb://mongo:27017/user-db
+      - PORT=3002
+      - MONGO_URI=${MONGO_URI}user-db
     depends_on:
       - mongo
 
@@ -45,10 +49,11 @@ services:
       context: ./BE/payment-service
       dockerfile: Dockerfile
     ports:
-      - "3003:3003"
+      - "3003:3003" 
     environment:
-      - MONGO_URI=mongodb://mongo:27017/payment-db
-      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - PORT=3003
+      - MONGO_URI=${MONGO_URI}payment-db
+      - RABBITMQ_URL=${RABBITMQ_URL}
     depends_on:
       - mongo
       - rabbitmq
@@ -59,8 +64,8 @@ services:
       - "5672:5672"     # AMQP port
       - "15672:15672"   # Management UI port
     environment:
-      - RABBITMQ_DEFAULT_USER=admin
-      - RABBITMQ_DEFAULT_PASS=admin123
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
 
@@ -69,13 +74,13 @@ services:
       context: ./BE/notification-service
       dockerfile: Dockerfile
     ports:
-      - "3004:3004"
+      - "3004:3004" 
     environment:
-      - MONGO_URI=mongodb://mongo:27017/notification-db
-      - EMAIL_USER=minhtuank27tdtu@gmail.com
-      - EMAIL_PASS=scxwnfestbszztcf
-      - OTP_EXPIRE_MINUTES=1
-      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
+      - MONGO_URI=${MONGO_URI}notification-db
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - OTP_EXPIRE_MINUTES=${OTP_EXPIRE_MINUTES}
+      - RABBITMQ_URL=${RABBITMQ_URL}
     depends_on:
       - mongo
       - rabbitmq
@@ -94,14 +99,13 @@ services:
       context: ./BE/Tuition-service
       dockerfile: Dockerfile
     ports:
-      - "3005:3005"
+      - "3005:3005" 
     environment:
-      - MONGO_URI=mongodb://mongo:27017/tuition-db
+      - PORT=3005
+      - MONGO_URI=${MONGO_URI}tuition-db
     depends_on:
       - mongo
       
-  
-    
   mongo:
     image: mongo:latest
     ports:
